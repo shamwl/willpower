@@ -11,6 +11,22 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "internet_reason",
+      "value": "需要访问网络以获取歌曲数据"
+    },
+    {
+      "name": "network_info_reason",
+      "value": "需要获取网络状态信息"
+    },
+    {
+      "name": "read_media_reason",
+      "value": "需要读取媒体文件"
+    },
+    {
+      "name": "write_media_reason",
+      "value": "需要保存下载的歌曲文件"
     }
   ]
 }

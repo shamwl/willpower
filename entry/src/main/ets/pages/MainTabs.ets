@@ -36,31 +36,32 @@ struct MainTabs {
   build() {
     Tabs({
       index: this.currentIndex,
-      controller: this.tabController
+      controller: this.tabController,
+      barPosition: BarPosition.End
     }) {
       // 发现页
       TabContent() {
         DiscoverPage()
       }
-      .tabBar(this.TabBarItem('发现', $r('app.media.shamwl3'), 0))
+      .tabBar(this.TabBarItem('发现', $r('app.media.111'), 0))
 
       // 我的下载页
       TabContent() {
         MyDownloadPage()
       }
-      .tabBar(this.TabBarItem('下载', $r('app.media.shamwl4'), 1))
+      .tabBar(this.TabBarItem('下载', $r('app.media.222'), 1))
 
       // 播放器页
       TabContent() {
         PlayerPage()
       }
-      .tabBar(this.TabBarItem('播放', $r('app.media.music1'), 2))
+      .tabBar(this.TabBarItem('播放', $r('app.media.333'), 2))
 
       // 我的页
       TabContent() {
         MyPage()
       }
-      .tabBar(this.TabBarItem('我的', $r('app.media.shamwl5'), 3))
+      .tabBar(this.TabBarItem('我的', $r('app.media.444'), 3))
     }
     .width('100%')
     .height('100%')

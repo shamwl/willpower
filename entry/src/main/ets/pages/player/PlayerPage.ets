@@ -1,9 +1,18 @@
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
-import { Song } from '../../model/SongModel'
+import { Song, PlayState } from '../../model/SongModel'
 import { MusicPlayerService } from '../../service/MusicPlayerService'
 import { PreferencesService } from '../../service/PreferencesService'
 import { SongService } from '../../service/SongService'
+
+/**
+ * 路由参数接口
+ */
+interface RouterParams {
+  songId?: string;
+  songName?: string;
+  songUrl?: string;
+}
 
 /**
  * 播放器页面
@@ -23,33 +32,42 @@ export struct PlayerPage {
   private songService: SongService = SongService.getInstance()
 
   aboutToAppear() {
-    const params: Record<string, string> = router.getParams() as Record<string, string>
-    if (params && params.songId) {
-      this.loadSong(params.songId)
+    const params: RouterParams = router.getParams() as RouterParams
+    
+    // 支持两种参数传递方式：
+    // 1. songId + songName + songUrl - 从 MyDownloadPage 传递（新方式）
+    // 2. songName + songUrl - 从旧版 MyDownloadPage 传递（兼容模式）
+    if (params && params.songId && params.songName && params.songUrl) {
+      // 新方式：传递完整的歌曲信息
+      this.loadSongByUrl(params.songId, params.songName, params.songUrl)
+    } else if (params && params.songName && params.songUrl) {
+      // 兼容模式：只传递 songName 和 songUrl
+      this.loadSongByUrl(params.songName, params.songName, params.songUrl)
+    } else if (params && params.songId) {
+      // 旧方式：从 DiscoverPage 传递 songId
+      this.loadSongById(params.songId)
     }
 
-    this.musicPlayer.onStateChangeListener((state: string) => {
-      this.isPlaying = state === 'playing'
-    })
+    this.musicPlayer.onStateChangeListener = (state: PlayState) => {
+      this.isPlaying = state === PlayState.PLAYING
+    }
 
-    this.musicPlayer.onProgressChangeListener((progress: number, duration: number) => {
-      this.progress = progress
+    this.musicPlayer.onProgressChangeListener = (currentTime: number, duration: number) => {
+      this.progress = currentTime
       this.duration = duration
-    })
+    }
 
-    this.musicPlayer.onSongChangeListener((song: Song | null) => {
+    this.musicPlayer.onSongChangeListener = (song: Song) => {
       this.currentSong = song
-      if (song) {
-        this.loadFavoriteStatus(song.id)
-      }
-    })
+      this.loadFavoriteStatus(song.id)
+    }
 
-    this.musicPlayer.onErrorListener((error: string) => {
-      promptAction.showToast({ message: error })
-    })
+    this.musicPlayer.onErrorListener = (errorMsg: string) => {
+      promptAction.showToast({ message: errorMsg })
+    }
   }
 
-  async loadSong(songId: string) {
+  async loadSongById(songId: string) {
     const song: Song | undefined = this.songService.getSongById(songId)
     if (song) {
       this.currentSong = song
@@ -57,6 +75,37 @@ export struct PlayerPage {
       await this.loadDownloadStatus(songId)
       await this.loadLyrics(song)
     }
+  }
+
+  async loadSongByUrl(songId: string, songName: string, songUrl: string) {
+    // 从 songName 中提取艺术家和标题信息
+    const formattedName = this.formatSongName(songName)
+    const parts = formattedName.split('-')
+    const author = parts.length >= 2 ? parts[0].trim() : '未知歌手'
+    const title = parts.length >= 2 ? parts.slice(1).join('-').trim() : formattedName
+
+    // 创建临时的 Song 对象，使用 songId 作为唯一标识
+    this.currentSong = {
+      id: songId,
+      name: title,
+      author: author,
+      album: '未知专辑',
+      duration: 0,
+      ossPath: songUrl
+    }
+    
+    await this.loadFavoriteStatus(songId)
+    await this.loadDownloadStatus(songId)
+    await this.loadLyrics(this.currentSong)
+  }
+
+  formatSongName(name: string): string {
+    let formatted = name.replace(/#[a-zA-Z0-9]+/g, '')
+    formatted = formatted.replace(/\(.*版\)/g, '')
+    formatted = formatted.replace(/\(.*remix\)/gi, '')
+    formatted = formatted.replace(/\.Explicit\./gi, '.')
+    formatted = formatted.replace(/\.[0-9]+x\./gi, '.')
+    return formatted.trim()
   }
 
   async loadFavoriteStatus(songId: string) {
@@ -99,8 +148,8 @@ export struct PlayerPage {
     this.musicPlayer.playNext()
   }
 
-  async onProgressChange(value: number) {
-    await this.musicPlayer.seek(value)
+  onProgressChange(value: number) {
+    this.musicPlayer.seek(value)
   }
 
   async toggleFavorite() {
