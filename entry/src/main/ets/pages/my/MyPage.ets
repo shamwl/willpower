@@ -205,7 +205,7 @@ export struct MyPage {
    */
   showLoginDialog() {
     // 这里使用简单的方式，实际应该使用自定义弹窗
-    promptAction.showToast({ message: '登录功能开发中...' })
+    promptAction.showToast({ message: '我等你好久了，快来吧' })
   }
 
   /**
@@ -213,6 +213,6 @@ export struct MyPage {
    */
   showRegisterDialog() {
     // 这里使用简单的方式，实际应该使用自定义弹窗
-    promptAction.showToast({ message: '注册功能开发中...' })
+    promptAction.showToast({ message: '欢迎加入我们大家庭哦' })
   }
 }

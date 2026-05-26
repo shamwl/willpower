@@ -14,20 +14,25 @@ import { MusicPlayerService } from '../service/MusicPlayerService'
  */
 @Entry
 @Component
-struct MainTabs {
+export struct MainTabs {
   @State currentIndex: number = 0
   private tabController: TabsController = new TabsController()
   private context: common.Context = getContext(this)
 
   aboutToAppear() {
-    this.initServices()
+    this.initServices().catch((error) => {
+      console.error('服务初始化失败:', error)
+    })
   }
 
-  async initServices() {
+  async initServices(): Promise<void> {
     try {
-      PreferencesService.getInstance().init(this.context)
+      console.info('开始初始化服务')
+      await PreferencesService.getInstance().init(this.context)
+      console.info('PreferencesService 初始化完成')
       MusicPlayerService.getInstance().init(this.context)
-      console.info('服务初始化完成')
+      console.info('MusicPlayerService 初始化完成')
+      console.info('所有服务初始化完成')
     } catch (error) {
       console.error('服务初始化失败:', error)
     }

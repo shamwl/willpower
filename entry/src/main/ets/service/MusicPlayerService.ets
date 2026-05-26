@@ -169,6 +169,11 @@ export class MusicPlayerService {
    * 播放指定歌曲
    */
   public async play(song: Song): Promise<void> {
+    console.info('========== MusicPlayerService.play() 被调用 ==========');
+    console.info(`歌曲名称: ${song.name}`);
+    console.info(`歌曲ID: ${song.id}`);
+    console.info(`歌曲URL: ${song.ossPath}`);
+    
     try {
       this.setCurrentSong(song);
       this.setPlayState(PlayState.LOADING);
@@ -176,28 +181,45 @@ export class MusicPlayerService {
       promptAction.showToast({ message: `🎵 正在加载: ${song.name}` });
 
       // 下载歌曲到本地
+      console.info('步骤1: 开始下载歌曲...');
       const localPath = await this.downloadSongFromOSS(song);
       if (!localPath) {
         throw new Error('下载歌曲文件失败');
       }
 
       // 创建播放器
+      console.info('步骤2: 创建音频播放器...');
       const player = await this.createAndConfigurePlayer();
+      console.info('步骤2完成: 音频播放器创建成功');
       
-      // 设置播放源并准备播放（使用 prepare 方法传入 URI）
-      const uri = `file://${localPath}`;
-      console.info('设置播放源:', uri);
-      player.url = uri;
-      await player.prepare()
-      
-      // 开始播放
-      player.play();
+      // 设置播放源并准备播放（使用新版 API）
+      const uri = `file:///${localPath}`;
+      console.info(`步骤3: 设置播放源: ${uri}`);
 
-      promptAction.showToast({ message: `🎵 开始播放: ${song.name}` });
+      // 使用正确的 API 调用顺序
+      // 1. 绑定状态回调（必须在设置url之前）
+      player.on('stateChange', (state) => {
+        console.log('播放器状态:', state);
+        if (state === 'prepared') {
+          // 只有准备完成了，才能play()
+          console.log('播放器准备完成，开始播放');
+          player.play();
+          console.info('步骤3-4完成：播放命令已发送');
+          promptAction.showToast({ message: `🎵 开始播放：${song.name}` });
+        }
+      });
+
+      // 2. 设置播放源
+      player.url = uri;
+
+      // 3. 发起准备（异步操作，后续由stateChange回调处理）
+      player.prepare();
 
     } catch (error) {
+      console.error(`========== MusicPlayerService.play() 失败 ==========`);
+      console.error(`错误信息: ${(error as Object).toString()}`);
       this.setPlayState(PlayState.ERROR);
-      this.handleError('播放失败: ' + (error as Error).message);
+      this.handleError('播放失败');
     }
   }
 
@@ -337,35 +359,79 @@ export class MusicPlayerService {
    * 从 OSS 下载歌曲文件
    */
   private async downloadSongFromOSS(song: Song): Promise<string | null> {
+    console.info('---------- downloadSongFromOSS 开始 ----------');
+    console.info(`下载歌曲: ${song.name}`);
+    console.info(`下载URL: ${song.ossPath}`);
+    
     if (!this.context) {
-      console.error('上下文未初始化');
+      console.error('下载失败: 上下文未初始化');
       return null;
     }
 
     try {
+      console.info('正在创建 HTTP 请求...');
       const httpRequest = http.createHttp();
+      
+      console.info('发送 GET 请求...');
       const response = await httpRequest.request(song.ossPath, {
-        method: http.RequestMethod.GET
+        method: http.RequestMethod.GET,
+        connectTimeout: 10000,
+        readTimeout: 30000
       });
 
-      if (response.responseCode === 200) {
+      console.info(`HTTP响应状态码: ${response.responseCode}`);
+      
+      if (response.responseCode === 200 || response.responseCode === 304) {
         const cacheDir = this.context.cacheDir;
         const fileName = `${song.id}.mp3`;
         const filePath = `${cacheDir}/${fileName}`;
+        
+        console.info(`保存路径: ${filePath}`);
+
+        // 处理响应数据
+        let data: ArrayBuffer;
+        const result: Object = response.result;
+        if (typeof result === 'string') {
+          console.info('响应数据是字符串类型');
+          console.error('警告: 响应数据应为二进制类型，当前是字符串，可能导致播放失败');
+          data = this.stringToArrayBuffer(result);
+        } else if (result instanceof ArrayBuffer) {
+          console.info('响应数据是 ArrayBuffer 类型');
+          data = result;
+        } else {
+          console.error('下载失败: 无法解析响应数据');
+          return null;
+        }
+        
+        console.info(`文件大小: ${data.byteLength} bytes`);
 
         // 写入文件
+        console.info('正在写入文件...');
         const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-        fs.writeSync(file.fd, response.result as ArrayBuffer);
+        fs.writeSync(file.fd, data);
         fs.closeSync(file);
-
+        
+        console.info('---------- downloadSongFromOSS 成功 ----------');
         return filePath;
       } else {
         console.error(`下载失败，HTTP 状态码: ${response.responseCode}`);
         return null;
       }
     } catch (error) {
-      console.error('下载歌曲文件异常:', error);
+      console.error(`下载歌曲文件异常: ${(error as Object).toString()}`);
       return null;
     }
+  }
+
+  /**
+   * 将字符串转换为 ArrayBuffer
+   */
+  private stringToArrayBuffer(str: string): ArrayBuffer {
+    const buffer = new ArrayBuffer(str.length * 2);
+    const view = new Uint16Array(buffer);
+    for (let i = 0; i < str.length; i++) {
+      view[i] = str.charCodeAt(i);
+    }
+    return buffer;
   }
 }

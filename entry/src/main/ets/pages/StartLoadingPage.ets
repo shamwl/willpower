@@ -1,5 +1,4 @@
 import router from '@ohos.router';
-
 /**
  * 启动加载页面
  * 应用启动时显示此页面，初始化完成后跳转到主页面
@@ -7,7 +6,7 @@ import router from '@ohos.router';
 @Entry
 @Component
 export struct StartLoadingPage {
-  @State message: string = '磊磊音乐'
+  @State message: string = 'WL音乐'
   @State loadingText: string = '正在加载...'
   private timerController: number = 0
 
@@ -15,7 +14,6 @@ export struct StartLoadingPage {
     // 模拟加载过程
     this.initApp()
   }
-
   /**
    * 初始化应用
    */
@@ -39,7 +37,7 @@ export struct StartLoadingPage {
       // 延迟1秒后跳转
       await this.delay(1000)
 
-      // 跳转到主页
+      // 跳转到主页面
       router.replaceUrl({
         url: 'pages/MainTabs'
       })

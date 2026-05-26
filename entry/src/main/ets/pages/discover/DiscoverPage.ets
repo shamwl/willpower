@@ -1,6 +1,19 @@
 import router from '@ohos.router';
 import { Song } from '../../model/SongModel'
-import { SongService } from '../../service/SongService'
+
+/**
+ * 资源管理器接口
+ */
+interface ResourceManagerInterface {
+  getRawFileContent(fileName: string): Promise<ArrayBuffer>;
+}
+
+/**
+ * 应用上下文接口
+ */
+interface AppContextInterface {
+  resourceManager: ResourceManagerInterface;
+}
 
 /**
  * 发现页面
@@ -67,23 +80,99 @@ export struct DiscoverPage {
 }
 
 /**
+ * 歌曲数据接口（与 MyDownloadPage 一致）
+ */
+interface SongItem {
+  id: string;
+  name: string;
+  url: string;
+}
+
+/**
  * 推荐视图
  */
 @Component
 struct RecommendedView {
   @State recommendedSongs: Song[] = []
-  private songService: SongService = SongService.getInstance()
 
   aboutToAppear() {
     this.loadRecommendedSongs()
   }
 
   /**
-   * 加载推荐歌曲
+   * 加载推荐歌曲（从 rawfile 读取）
    */
   async loadRecommendedSongs() {
-    const allSongs: Song[] = await this.songService.getSongList()
-    this.recommendedSongs = this.songService.getRandomRecommendations(20)
+    try {
+      const appContext = getContext(this) as AppContextInterface
+      const fileData: ArrayBuffer = await appContext.resourceManager.getRawFileContent('encoded_songs.json')
+      const uint8Array: Uint8Array = new Uint8Array(fileData)
+      const jsonString: string = this.uint8ArrayToString(uint8Array)
+      const songItems: SongItem[] = JSON.parse(jsonString) as SongItem[]
+      
+      // 转换为 Song 类型并随机选取20首
+      const allSongs: Song[] = songItems.map(item => {
+        const song: Song = {
+          id: item.id,
+          name: this.formatSongName(item.name),
+          author: this.getAuthor(item.name),
+          album: '未知专辑',
+          duration: 0,
+          ossPath: item.url
+        };
+        return song;
+      })
+      
+      // 随机打乱并取前20首
+      this.recommendedSongs = allSongs.sort(() => Math.random() - 0.5).slice(0, 20)
+    } catch (error) {
+      console.error('加载推荐歌曲失败:', error)
+    }
+  }
+
+  /**
+   * 将 Uint8Array 转换为字符串
+   */
+  uint8ArrayToString(uint8Array: Uint8Array): string {
+    let result: string = ''
+    let i: number = 0
+    while (i < uint8Array.length) {
+      const byte: number = uint8Array[i]
+      if (byte < 0x80) {
+        result += String.fromCharCode(byte)
+        i++
+      } else if (byte >= 0xE0) {
+        const codePoint: number = ((byte & 0x0F) << 12) | ((uint8Array[i + 1] & 0x3F) << 6) | (uint8Array[i + 2] & 0x3F)
+        result += String.fromCodePoint(codePoint)
+        i += 3
+      } else {
+        const codePoint: number = ((byte & 0x1F) << 6) | (uint8Array[i + 1] & 0x3F)
+        result += String.fromCodePoint(codePoint)
+        i += 2
+      }
+    }
+    return result
+  }
+
+  /**
+   * 格式化歌曲名称
+   */
+  formatSongName(name: string): string {
+    let formatted = name.replace(/#[a-zA-Z0-9]+/g, '')
+    formatted = formatted.replace(/\(.*版\)/g, '')
+    formatted = formatted.replace(/\(.*remix\)/gi, '')
+    formatted = formatted.replace(/\.Explicit\./gi, '.')
+    formatted = formatted.replace(/\.[0-9]+x\./gi, '.')
+    return formatted.trim()
+  }
+
+  /**
+   * 从歌曲名中提取艺术家
+   */
+  getAuthor(name: string): string {
+    const formatted = this.formatSongName(name)
+    const parts = formatted.split('-')
+    return parts.length >= 2 ? parts[0].trim() : '未知歌手'
   }
 
   build() {
@@ -169,7 +258,9 @@ struct RecommendedView {
           router.pushUrl({
             url: 'pages/player/PlayerPage',
             params: {
-              songId: song.id
+              songId: song.id,
+              songName: song.name,
+              songUrl: song.ossPath
             }
           })
         })
@@ -181,7 +272,9 @@ struct RecommendedView {
       router.pushUrl({
         url: 'pages/player/PlayerPage',
         params: {
-          songId: song.id
+          songId: song.id,
+          songName: song.name,
+          songUrl: song.ossPath
         }
       })
     })
@@ -196,7 +289,84 @@ struct SearchView {
   @State searchKeyword: string = ''
   @State searchResults: Song[] = []
   @State isSearching: boolean = false
-  private songService: SongService = SongService.getInstance()
+  private allSongs: Song[] = []
+
+  aboutToAppear() {
+    this.loadAllSongs()
+  }
+
+  /**
+   * 加载所有歌曲（从 rawfile 读取）
+   */
+  async loadAllSongs() {
+    try {
+      const appContext = getContext(this) as AppContextInterface
+      const fileData: ArrayBuffer = await appContext.resourceManager.getRawFileContent('encoded_songs.json')
+      const uint8Array: Uint8Array = new Uint8Array(fileData)
+      const jsonString: string = this.uint8ArrayToString(uint8Array)
+      const songItems: SongItem[] = JSON.parse(jsonString) as SongItem[]
+      
+      // 转换为 Song 类型
+      this.allSongs = songItems.map(item => {
+        const song: Song = {
+          id: item.id,
+          name: this.formatSongName(item.name),
+          author: this.getAuthor(item.name),
+          album: '未知专辑',
+          duration: 0,
+          ossPath: item.url
+        };
+        return song;
+      })
+    } catch (error) {
+      console.error('加载歌曲列表失败:', error)
+    }
+  }
+
+  /**
+   * 将 Uint8Array 转换为字符串
+   */
+  uint8ArrayToString(uint8Array: Uint8Array): string {
+    let result: string = ''
+    let i: number = 0
+    while (i < uint8Array.length) {
+      const byte: number = uint8Array[i]
+      if (byte < 0x80) {
+        result += String.fromCharCode(byte)
+        i++
+      } else if (byte >= 0xE0) {
+        const codePoint: number = ((byte & 0x0F) << 12) | ((uint8Array[i + 1] & 0x3F) << 6) | (uint8Array[i + 2] & 0x3F)
+        result += String.fromCodePoint(codePoint)
+        i += 3
+      } else {
+        const codePoint: number = ((byte & 0x1F) << 6) | (uint8Array[i + 1] & 0x3F)
+        result += String.fromCodePoint(codePoint)
+        i += 2
+      }
+    }
+    return result
+  }
+
+  /**
+   * 格式化歌曲名称
+   */
+  formatSongName(name: string): string {
+    let formatted = name.replace(/#[a-zA-Z0-9]+/g, '')
+    formatted = formatted.replace(/\(.*版\)/g, '')
+    formatted = formatted.replace(/\(.*remix\)/gi, '')
+    formatted = formatted.replace(/\.Explicit\./gi, '.')
+    formatted = formatted.replace(/\.[0-9]+x\./gi, '.')
+    return formatted.trim()
+  }
+
+  /**
+   * 从歌曲名中提取艺术家
+   */
+  getAuthor(name: string): string {
+    const formatted = this.formatSongName(name)
+    const parts = formatted.split('-')
+    return parts.length >= 2 ? parts[0].trim() : '未知歌手'
+  }
 
   build() {
     Column() {
@@ -288,7 +458,12 @@ struct SearchView {
     // 延迟300ms，避免频繁搜索
     await this.delay(300)
 
-    this.searchResults = this.songService.searchSongs(this.searchKeyword)
+    // 在本地歌曲列表中搜索
+    const keyword = this.searchKeyword.toLowerCase()
+    this.searchResults = this.allSongs.filter(song => 
+      song.name.toLowerCase().includes(keyword) || 
+      song.author.toLowerCase().includes(keyword)
+    )
     this.isSearching = false
   }
 
@@ -332,7 +507,9 @@ struct SearchView {
           router.pushUrl({
             url: 'pages/player/PlayerPage',
             params: {
-              songId: song.id
+              songId: song.id,
+              songName: song.name,
+              songUrl: song.ossPath
             }
           })
         })
@@ -344,7 +521,9 @@ struct SearchView {
       router.pushUrl({
         url: 'pages/player/PlayerPage',
         params: {
-          songId: song.id
+          songId: song.id,
+          songName: song.name,
+          songUrl: song.ossPath
         }
       })
     })

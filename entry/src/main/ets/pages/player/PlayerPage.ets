@@ -3,7 +3,6 @@ import promptAction from '@ohos.promptAction';
 import { Song, PlayState } from '../../model/SongModel'
 import { MusicPlayerService } from '../../service/MusicPlayerService'
 import { PreferencesService } from '../../service/PreferencesService'
-import { SongService } from '../../service/SongService'
 
 /**
  * 路由参数接口
@@ -17,6 +16,7 @@ interface RouterParams {
 /**
  * 播放器页面
  */
+@Entry
 @Component
 export struct PlayerPage {
   @State currentSong: Song | null = null
@@ -29,7 +29,6 @@ export struct PlayerPage {
   @State currentLyrics: string = ''
   private musicPlayer: MusicPlayerService = MusicPlayerService.getInstance()
   private preferencesService: PreferencesService = PreferencesService.getInstance()
-  private songService: SongService = SongService.getInstance()
 
   aboutToAppear() {
     const params: RouterParams = router.getParams() as RouterParams
@@ -43,9 +42,6 @@ export struct PlayerPage {
     } else if (params && params.songName && params.songUrl) {
       // 兼容模式：只传递 songName 和 songUrl
       this.loadSongByUrl(params.songName, params.songName, params.songUrl)
-    } else if (params && params.songId) {
-      // 旧方式：从 DiscoverPage 传递 songId
-      this.loadSongById(params.songId)
     }
 
     this.musicPlayer.onStateChangeListener = (state: PlayState) => {
@@ -64,16 +60,6 @@ export struct PlayerPage {
 
     this.musicPlayer.onErrorListener = (errorMsg: string) => {
       promptAction.showToast({ message: errorMsg })
-    }
-  }
-
-  async loadSongById(songId: string) {
-    const song: Song | undefined = this.songService.getSongById(songId)
-    if (song) {
-      this.currentSong = song
-      await this.loadFavoriteStatus(songId)
-      await this.loadDownloadStatus(songId)
-      await this.loadLyrics(song)
     }
   }
 
@@ -97,6 +83,11 @@ export struct PlayerPage {
     await this.loadFavoriteStatus(songId)
     await this.loadDownloadStatus(songId)
     await this.loadLyrics(this.currentSong)
+    
+    // 调用播放器播放歌曲
+    if (this.currentSong) {
+      await this.musicPlayer.play(this.currentSong)
+    }
   }
 
   formatSongName(name: string): string {
