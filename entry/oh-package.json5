@@ -1,0 +1,11 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "磊磊音乐 - HarmonyOS 音频播放器",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+  }
+}
+
