@@ -1,108 +1,83 @@
 # 磊磊音乐 - HarmonyOS 音频播放器
 
-基于 HarmonyOS NEXT 和阿里云 OSS 的音频播放器应用。
+基于 HarmonyOS NEXT 的音频播放器应用，支持在线流媒体播放。
 
 ## 项目结构
 
 ```
-leilei-music/
-├── backend/                          # Node.js 后端服务
-│   ├── server.js                    # 歌曲列表服务
-│   ├── package.json                 # 后端依赖配置
-│   └── README.md                    # 后端服务说明
-│
-└── entry/src/main/ets/
-    ├── model/                       # 数据模型
-    │   └── SongModel.ets           # 歌曲、用户、播放器状态等数据模型
+shamwl/
+└── entry/src/main/
+    ├── ets/
+    │   ├── model/                      # 数据模型
+    │   │   └── SongModel.ets           # 歌曲、播放状态等数据模型
+    │   │
+    │   ├── service/                    # 业务服务
+    │   │   ├── MusicPlayerService.ets  # 音频播放服务（AVPlayer）
+    │   │   └── PreferencesService.ets  # 本地存储服务（收藏/下载记录）
+    │   │
+    │   └── pages/                      # 页面组件
+    │       ├── StartLoadingPage.ets    # 启动加载页
+    │       ├── MainTabs.ets           # 主导航页面（TabBar）
+    │       ├── discover/               # 发现页面
+    │       │   └── DiscoverPage.ets   # 推荐歌曲 + 搜索功能
+    │       ├── mydownload/            # 我的下载页面
+    │       │   └── MyDownloadPage.ets # 收藏列表
+    │       ├── player/                 # 播放器页面
+    │       │   └── PlayerPage.ets     # 音频播放控制
+    │       └── my/                     # 我的页面
+    │           └── MyPage.ets         # 用户信息展示
     │
-    ├── service/                     # 业务服务
-    │   ├── MusicPlayerService.ets  # 音频播放服务（AVPlayer）
-    │   ├── SongService.ets         # 歌曲数据服务（OSS公共读）
-    │   └── PreferencesService.ets  # 本地存储服务
-    │
-    └── pages/                      # 页面组件
-        ├── StartLoadingPage.ets    # 启动加载页
-        ├── MainTabs.ets           # 主导航页面（4个Tab）
-        ├── discover/               # 发现页面
-        │   └── DiscoverPage.ets   # 推荐 + 搜索
-        ├── mydownload/            # 我的下载页面
-        │   └── MyDownloadPage.ets # 收藏 + 下载
-        ├── player/                 # 播放器页面
-        │   └── PlayerPage.ets     # 音频播放控制
-        └── my/                     # 我的页面
-            └── MyPage.ets         # 用户信息 + 登录注册
+    └── resources/
+        └── rawfile/
+            └── encoded_songs.json      # 歌曲数据（已编码）
 ```
 
 ## 主要功能
 
 ### 1. 发现页面
-- **推荐歌曲**：随机从曲库抽取20首作为每日推荐
-- **歌曲搜索**：支持按歌曲名、歌手、专辑搜索
+- **推荐歌曲**：从 `encoded_songs.json` 加载推荐歌曲列表
+- **歌曲搜索**：支持按歌曲名、歌手搜索
 
 ### 2. 我的下载页面
-- **我的收藏**：收藏喜欢的歌曲
-- **我的下载**：管理已下载的歌曲
+- **我的收藏**：收藏喜欢的歌曲（使用 Preferences 存储）
+- **收藏管理**：查看和取消收藏
 
 ### 3. 播放器页面
-- **音频播放**：使用 AVPlayer API 播放音频
+- **在线流媒体播放**：直接播放网络音频文件，无需下载
 - **播放控制**：播放/暂停、上一首/下一首、进度跳转
-- **歌曲信息**：显示歌曲名、歌手、专辑封面
+- **歌曲信息**：显示歌曲名、歌手、专辑信息
 - **歌词显示**：支持歌词展示
-- **收藏下载**：支持收藏和下载当前歌曲
 
 ### 4. 我的页面
 - **用户信息**：显示用户基本信息
-- **登录注册**：用户登录和注册功能
 
 ## 技术架构
 
 ### 音频播放
 - **播放器**：HarmonyOS AVPlayer API
+- **播放方式**：在线流媒体播放（HTTP/HTTPS URL）
 - **播放流程**：
-  1. 从 OSS 通过公共读方式下载歌曲文件到本地临时目录
-  2. 使用 AVPlayer 播放本地文件
+  1. 从 `rawfile/encoded_songs.json` 获取歌曲 URL
+  2. 使用 AVPlayer 直接播放在线音频流
   3. 支持进度跳转（Seek）
 
 ### 数据存储
-- **Preferences**：使用 HarmonyOS Preferences 存储用户收藏和下载信息
-- **歌曲列表**：从 OSS 获取 JSON 格式的歌曲列表（公共读方式）
+- **Preferences**：使用 HarmonyOS Preferences 存储用户收藏信息
+- **歌曲数据**：从 `rawfile/encoded_songs.json` 读取（应用内置）
 
-### 阿里云 OSS（公共读方式）
-- **存储桶**：shamwl-project
-- **区域**：cn-beijing
-- **Endpoint**：oss-cn-beijing.aliyuncs.com
-- **歌曲路径**：song/*.mp3
-- **访问方式**：公共读（无需 AccessKey）
-
-### 安全机制
-- **公共读权限**：OSS Bucket 配置为公共读，无需硬编码 AccessKey
-- **无敏感信息**：前端代码不包含任何阿里云密钥
-
-## 阿里云 OSS 配置
-
-### 1. 配置公共读权限
-登录阿里云 OSS 控制台，为您的 Bucket（shamwl-project）配置公共读策略：
-
-```json
-{
-  "Version": "1",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": ["oss:GetObject"],
-      "Resource": ["acs:oss:*:*:shamwl-project/*"]
-    }
-  ]
-}
+### 在线播放原理
+```
+┌─────────────────────────────────────────────────────────┐
+│                    播放流程                              │
+├─────────────────────────────────────────────────────────┤
+│  encoded_songs.json → 获取歌曲URL → AVPlayer设置播放源  │
+│                     → prepare() → play() → 播放输出     │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 2. 上传歌曲文件
-将您的 MP3 歌曲文件上传到 OSS 的 `song/` 文件夹，并确保以下文件存在：
-- `song-list.json`：歌曲列表 JSON 文件
-- `song/*.mp3`：歌曲音频文件
+## 歌曲数据格式
 
-### 3. 歌曲列表 JSON 格式
+`rawfile/encoded_songs.json` 文件格式：
 
 ```json
 {
@@ -113,7 +88,7 @@ leilei-music/
       "author": "歌手名",
       "album": "专辑名",
       "duration": 180,
-      "ossPath": "song/song_001.mp3",
+      "ossPath": "https://your-bucket.oss-cn-beijing.aliyuncs.com/song/song_001.mp3",
       "coverUrl": "封面图片URL",
       "lyrics": "[00:00.00]歌词内容"
     }
@@ -121,70 +96,76 @@ leilei-music/
 }
 ```
 
-## 后端服务部署
-
-### 1. 安装依赖
-```bash
-cd backend
-npm install
-```
-
-### 2. 启动服务
-```bash
-npm start
-```
-
-服务将在 http://localhost:3000 启动。
-
-### 3. API 接口
-- **GET /api/songs**：获取歌曲列表 URL
-
 ## 运行项目
 
-### 1. 确保 OSS 配置正确
-确保您的 OSS Bucket 配置了公共读权限，并且包含歌曲文件。
+### 1. 配置要求
+- **DevEco Studio**：最新版本
+- **HarmonyOS SDK**：API 12 或更高
 
-### 2. 启动后端服务（可选）
-```bash
-cd backend
-npm install
-npm start
+### 2. 运行步骤
+1. 在 DevEco Studio 中打开项目
+2. 配置 HarmonyOS 模拟器或连接真机
+3. 点击运行按钮
+
+### 3. 网络权限
+确保 `module.json5` 中配置了网络权限：
+
+```json
+{
+  "requestPermissions": [
+    {
+      "name": "ohos.permission.INTERNET"
+    }
+  ]
+}
 ```
-
-### 3. 在 DevEco Studio 中运行
-打开项目，运行到 HarmonyOS 模拟器或设备。
 
 ## 开发注意事项
 
-### 1. 权限配置
-确保在 `module.json5` 中配置了必要的权限：
-- 网络访问权限
-- 文件读写权限
+### 1. URL 格式要求
+- 歌曲 URL 必须以 `http://` 或 `https://` 开头
+- 支持 MP3、AAC、FLAC 等常见音频格式
+- 服务器需支持 CORS 或允许跨域访问
 
-### 2. 模拟器测试
-应用支持在 HarmonyOS 模拟器上测试：
-- 模拟器版本：5.0.5 (API 17)
-- 目标 API 版本：12 或更高
+### 2. 播放器状态管理
+- 每次播放前需释放旧播放器资源
+- 遵循 AVPlayer 状态机流程：`initialized → prepared → playing`
 
-### 3. OSS 公共读配置
-确保您的 OSS Bucket 配置了正确的公共读权限，否则将无法访问歌曲文件。
+### 3. 模拟器测试
+- 支持在 HarmonyOS 模拟器上测试
+- 确保模拟器网络连接正常
 
-## 未来优化方向
+## 核心服务说明
 
-1. **优化音频播放**：支持在线播放而不是下载后播放
-2. **歌词同步**：实现歌词滚动和同步显示
-3. **用户系统**：完善用户登录注册系统
-4. **播放列表**：支持创建和管理播放列表
-5. **缓存管理**：优化本地文件缓存管理
-6. **离线模式**：支持离线播放已下载的歌曲
+### MusicPlayerService（音乐播放服务）
+- **单例模式**：全局唯一播放器实例
+- **主要方法**：
+  - `play(song)`：播放指定歌曲
+  - `pause()`：暂停播放
+  - `resume()`：恢复播放
+  - `playPrev()` / `playNext()`：上一首/下一首
+  - `seek(position)`：跳转到指定位置
 
-## 技术支持
+### PreferencesService（本地存储服务）
+- **单例模式**：管理用户偏好设置
+- **主要方法**：
+  - `addFavorite(songId)`：添加收藏
+  - `removeFavorite(songId)`：取消收藏
+  - `isFavorite(songId)`：检查是否收藏
 
-如有问题，请检查：
-1. 阿里云 OSS Bucket 是否配置了公共读权限
-2. 歌曲列表 JSON 文件是否存在且格式正确
-3. 歌曲文件路径是否正确
-4. 网络连接是否正常
+## 更新历史
+
+### v1.1（最新）
+- ✅ 移除 SongService，直接从 rawfile 读取歌曲数据
+- ✅ 改为在线流媒体播放，无需下载到沙箱
+- ✅ 修复启动页面路由问题
+- ✅ 优化播放器状态管理
+
+### v1.0（初始版本）
+- ✅ 基础播放功能
+- ✅ 收藏功能
+- ✅ 搜索功能
+- ✅ 页面导航
 
 ## License
 

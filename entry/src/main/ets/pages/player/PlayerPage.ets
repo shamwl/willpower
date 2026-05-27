@@ -115,9 +115,10 @@ export struct PlayerPage {
     }
   }
 
-  formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 1000 / 60)
-    const secs = Math.floor((seconds / 1000) % 60)
+  formatTime(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000)
+    const mins = Math.floor(totalSeconds / 60)
+    const secs = totalSeconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 

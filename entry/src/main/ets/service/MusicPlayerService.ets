@@ -126,8 +126,8 @@ export class MusicPlayerService {
       });
 
       player.on('timeUpdate', () => {
-        const currentTime = player.currentTime * 1000;
-        const duration = player.duration * 1000;
+        const currentTime = player.currentTime;
+        const duration = player.duration;
         this.updateProgress(currentTime, duration);
       });
 
@@ -225,14 +225,31 @@ export class MusicPlayerService {
    * 跳转到指定位置
    */
   public async seek(position: number): Promise<void> {
-    if (this.audioPlayer) {
+    console.info(`seek() 被调用，position=${position}`);
+    console.info(`audioPlayer存在: ${this.audioPlayer !== null}`);
+    console.info(`duration=${this.duration}ms`);
+    
+    if (this.audioPlayer && this.duration > 0) {
       try {
-        // position 是百分比 (0-100)，需要转换为秒
-        const targetTime = (position / 100) * this.duration / 1000;
+        // position 是百分比 (0-100)，duration 是毫秒
+        // player.seek() 需要的参数是毫秒
+        const targetTime = (position / 100) * this.duration;
+        console.info(`跳转计算: ${position}% * ${this.duration}ms = ${targetTime.toFixed(0)}ms`);
+        
+        // 获取当前播放状态
+        const currentState = this.getState();
+        console.info(`当前播放状态: ${currentState}`);
+        
+        // 执行跳转（毫秒单位）
         await this.audioPlayer.seek(targetTime);
+        console.info(`seek() 调用成功，跳转到 ${targetTime.toFixed(0)}ms`);
+        
+        console.info(`跳转完成!`);
       } catch (e) {
         console.warn(`跳转失败: ${(e as Error).message}`);
       }
+    } else {
+      console.warn(`跳转条件不满足: audioPlayer=${this.audioPlayer !== null}, duration=${this.duration}`);
     }
   }
 
