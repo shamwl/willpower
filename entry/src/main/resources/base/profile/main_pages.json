@@ -1,6 +1,7 @@
 {
   "src": [
     "pages/MainTabs",
-    "pages/StartLoadingPage"
+    "pages/StartLoadingPage",
+    "pages/player/PlayerPage"
   ]
 }

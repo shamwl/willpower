@@ -137,6 +137,13 @@ export class MusicPlayerService {
           if (player.duration) {
             this.duration = player.duration * 1000;
           }
+          // 准备完成后自动播放
+          console.info('播放器准备完成，开始播放');
+          player.play().catch((e:Error) => {
+            console.error('播放失败:', e);
+            this.setPlayState(PlayState.ERROR);
+            this.handleError('播放失败');
+          });
           break;
         case 'playing':
           this.setPlayState(PlayState.PLAYING);
@@ -175,6 +182,11 @@ export class MusicPlayerService {
     console.info(`歌曲URL: ${song.ossPath}`);
     
     try {
+      // 检查上下文是否已初始化
+      if (!this.context) {
+        throw new Error('播放器服务未初始化，请先调用 init() 方法');
+      }
+
       this.setCurrentSong(song);
       this.setPlayState(PlayState.LOADING);
 
@@ -186,6 +198,7 @@ export class MusicPlayerService {
       if (!localPath) {
         throw new Error('下载歌曲文件失败');
       }
+      console.info(`步骤1完成: 歌曲已下载到 ${localPath}`);
 
       // 创建播放器
       console.info('步骤2: 创建音频播放器...');
@@ -196,30 +209,18 @@ export class MusicPlayerService {
       const uri = `file:///${localPath}`;
       console.info(`步骤3: 设置播放源: ${uri}`);
 
-      // 使用正确的 API 调用顺序
-      // 1. 绑定状态回调（必须在设置url之前）
-      player.on('stateChange', (state) => {
-        console.log('播放器状态:', state);
-        if (state === 'prepared') {
-          // 只有准备完成了，才能play()
-          console.log('播放器准备完成，开始播放');
-          player.play();
-          console.info('步骤3-4完成：播放命令已发送');
-          promptAction.showToast({ message: `🎵 开始播放：${song.name}` });
-        }
-      });
-
-      // 2. 设置播放源
+      // 设置播放源
       player.url = uri;
 
-      // 3. 发起准备（异步操作，后续由stateChange回调处理）
+      // 发起准备（异步操作，后续由createAndConfigurePlayer中注册的stateChange回调处理）
       player.prepare();
+      console.info('步骤3完成：已发起准备操作');
 
     } catch (error) {
       console.error(`========== MusicPlayerService.play() 失败 ==========`);
-      console.error(`错误信息: ${(error as Object).toString()}`);
+      console.error(`错误信息: ${(error as Error).message || (error as Object).toString()}`);
       this.setPlayState(PlayState.ERROR);
-      this.handleError('播放失败');
+      this.handleError(`播放失败: ${(error as Error).message || '未知错误'}`);
     }
   }
 

@@ -125,9 +125,19 @@ export struct PlayerPage {
     if (this.isPlaying) {
       await this.musicPlayer.pause()
     } else {
-      if (this.currentSong) {
-        await this.musicPlayer.play(this.currentSong)
+      // 检查当前播放状态
+      const currentState = this.musicPlayer.getState()
+      
+      if (currentState === PlayState.PAUSED) {
+        // 如果是暂停状态，调用 resume 恢复播放（不需要重新下载）
+        await this.musicPlayer.resume()
+      } else if (currentState === PlayState.IDLE || currentState === PlayState.LOADING || currentState === PlayState.ERROR) {
+        // 如果是空闲、加载中或错误状态，重新播放当前歌曲
+        if (this.currentSong) {
+          await this.musicPlayer.play(this.currentSong)
+        }
       }
+      // 如果状态是 PLAYING，不需要操作（可能是状态同步延迟）
     }
   }
 
