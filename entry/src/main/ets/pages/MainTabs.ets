@@ -20,7 +20,7 @@ export struct MainTabs {
   private context: common.Context = getContext(this)
 
   aboutToAppear() {
-    this.initServices().catch((error) => {
+    this.initServices().catch((error:Error) => {
       console.error('服务初始化失败:', error)
     })
   }

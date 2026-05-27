@@ -1,58 +1,21 @@
 import router from '@ohos.router';
+
 /**
  * 启动加载页面
- * 应用启动时显示此页面，初始化完成后跳转到主页面
  */
 @Entry
 @Component
 export struct StartLoadingPage {
-  @State message: string = 'WL音乐'
   @State loadingText: string = '正在加载...'
-  private timerController: number = 0
 
   aboutToAppear() {
-    // 模拟加载过程
-    this.initApp()
-  }
-  /**
-   * 初始化应用
-   */
-  async initApp() {
-    try {
-      // 显示加载状态
-      this.loadingText = '正在初始化...'
-
-      // 延迟1秒
-      await this.delay(1000)
-      this.loadingText = '正在加载歌曲列表...'
-
-      // 延迟1秒
-      await this.delay(1000)
-      this.loadingText = '正在准备播放器...'
-
-      // 延迟1秒
-      await this.delay(1000)
-      this.loadingText = '即将进入...'
-
-      // 延迟1秒后跳转
-      await this.delay(1000)
-
-      // 跳转到主页面
+    console.info('StartLoadingPage aboutToAppear')
+    setTimeout(() => {
+      console.info('准备跳转到 MainTabs')
       router.replaceUrl({
         url: 'pages/MainTabs'
       })
-
-    } catch (error) {
-      console.error('初始化失败:', error)
-      this.loadingText = '加载失败，请重试'
-    }
-  }
-
-  /**
-   * 延迟函数
-   */
-  delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    }, 2000)
   }
 
   build() {
@@ -73,7 +36,7 @@ export struct StartLoadingPage {
       // 内容区域
       Column() {
         // 应用名称
-        Text(this.message)
+        Text('WL音乐')
           .fontSize(50)
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF')
@@ -92,13 +55,11 @@ export struct StartLoadingPage {
           .fontSize(18)
           .fontColor('#CCCCCC')
           .textAlign(TextAlign.Center)
-
       }
       .width('100%')
       .height('100%')
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
-
     }
     .width('100%')
     .height('100%')
